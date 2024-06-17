@@ -17,6 +17,18 @@ usage(){
 EOF
 }
 
+fscreator(){
+		echo "Formatting lvm with ext$1 filesystem"
+					mkfs.ext$1 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 )
+					if [[ $? -eq 0 ]]; then
+						echo "Formatted ext$1 on lvm !!"
+					fi
+					fsdir=$(mktemp --dry-run --suffix=_lvmloopdrive | sed -r 's/\/tmp\///')
+					mkdir -p /mnt/lvmloopfs/$fsdir
+					mount /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) /mnt/lvmloopfs/$fsdir
+					echo "Find mounted filesystem on /mnt/lvmloopfs/$fsdir !!"
+}
+
 interactive_mode(){
 
 echo "Interactive mode"
@@ -66,8 +78,27 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		
 		case $formatyorn in
 			y)
-				read -p "Which filesystem to format with ext(4) ext(3) ext(2) exfat(1):" filesystem
-			       	if [[ ! -n $filesystem ]]; then
+				read -p "Which filesystem to format with ext(4) ext(3) ext(2):" filesystem
+			       	case $filesystem in
+			
+				4)
+					fscreator 4
+					exit 0
+					;;
+				3)
+					fscreator 3
+					exit 0
+					;;
+				2)
+					fscreator 2
+					exit 0
+					;;
+				1)
+					fscreator 1
+					exit 0
+					;;
+				*)
+
 					echo "Formatting lvm with default ext4 filesystem"
 					mkfs.ext4 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 )
 					if [[ $? -eq 0 ]]; then
@@ -77,12 +108,21 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 					mkdir -p /mnt/lvmloopfs/$fsdir
 					mount /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) /mnt/lvmloopfs/$fsdir
 					echo "Find mounted filesystem on /mnt/lvmloopfs/$fsdir !!"
-				fi
+					exit 0
+					;;
+				esac
 				;;
+
 			n)
-				echo "Created lvms did not format a filesystem on top"
+				echo "Created lvms did not format a filesystem on top so not mounted"
 				exit 0
 				;;
+			*)
+				echo "Invalid argument"
+				usage
+				exit 1
+				;;
+				
 			esac
 	fi
 
@@ -92,8 +132,34 @@ else
 fi 
 }
 
+deleteloop(){
+	if [[ -d "/mnt/lvmloopfs" ]]; then
+		umount /mnt/lvmloopfs/tmp\.*loopdrive
+			echo y | lvremove /dev/mapper/tmp\-\-*tmp*lv
+				rm -rf /tmp/tmp\.*loopdev
+				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 )
+				if [[ ! -n $(lvs) ]]; then
+					rm -rf /mnt/lvmloopfs/tmp\.*drive
+					if [[ $? -eq 0 ]]; then
+						rm -rf /mnt/lvmloopfs
+					fi
+				fi		
+		
+	else
+		echo "lvmloopfs directory does not exist. Deleting the rest"
+		echo y | lvremove /dev/mapper/tmp\-\-*tmp*lv
+		rm -rf /tmp/tmp\.*loopdev
+		losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 )
+		if [[ ! -n $(lvs) ]]; then
+			rm -rf /mnt/lvmloopfs/tmp\.*drive
+			if [[ $? -eq 0 ]]; then 
+				rm -rf /mnt/lvmloopfs
+			fi
+		fi
+	fi
+}
 
-while getopts ':hi' opts; do
+while getopts ':hdi' opts; do
 	case $opts in
 		h)
 			usage
@@ -102,6 +168,11 @@ while getopts ':hi' opts; do
 		i)
 			interactive_mode
 			exit 1
+			;;
+		d)
+			echo "Attempting to delete loopdrives created"
+			deleteloop
+			exit 0
 			;;
 		\?)
 			echo "Invalid option"
