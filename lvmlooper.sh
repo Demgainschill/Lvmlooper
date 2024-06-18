@@ -7,9 +7,17 @@ declare -i noofloop
 declare -i sizeofloop
 declare -a arrloopfiles
 
+b=$(tput setaf 4)
+r=$(tput setaf 1)
+g=$(tput setaf 10)
+y=$(tput setaf 3)
+reset=$(tput sgr0)
+c=$(tput setaf 14)
+greensoo=$(tput setaf 48)
+
 usage(){
 	cat <<EOF
-	usage: ./lvmlooper.sh [-h|-i|d]
+	${c}usage:${reset} ./lvmlooper.sh [-h|-i|d] 
 		-h : Help section 
 		-i : Interactive mode
 		-d : delete existing lvms created through lvmlooper
@@ -18,26 +26,33 @@ EOF
 }
 
 fscreator(){
-		echo "Formatting lvm with ext$1 filesystem"
-					mkfs.ext$1 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 )
+		echo -e "\n${y}Formatting lvm with ext$1 filesystem${reset}${reset}"
+					mkfs.ext$1 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) | 
+						while read line; do
+							echo ${y}${line}${reset}
+						done
 					if [[ $? -eq 0 ]]; then
-						echo "Formatted ext$1 on lvm !!"
+						echo "${g}Formatted ext$1 on lvm${reset} ${b}!!${reset}"
 					fi
 					fsdir=$(mktemp --dry-run --suffix=_lvmloopdrive | sed -r 's/\/tmp\///')
 					mkdir -p /mnt/lvmloopfs/$fsdir
 					mount /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) /mnt/lvmloopfs/$fsdir
-					echo "Find mounted filesystem on /mnt/lvmloopfs/$fsdir !!"
+					echo "${g}Find mounted filesystem on /mnt/lvmloopfs/$fsdir ${reset}${b}!!${reset}"
 }
 
 interactive_mode(){
 
-echo "Interactive mode"
 
-read -p "How many loop devices do you want to create: " noofloop
+echo "${y}Interactive mode${reset}"
+
+
+read -p "How many ${c}loop devices${reset} do you want to ${g}create${reset}:" noofloop
+
 
 if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
-	read -p "Size of each loop device in Mb: " sizeofloop
+	read -p "${y}Size${reset} of each ${c}loop device${reset} in ${g}Mb${reset}: " sizeofloop
 	if [[ $sizeofloop -gt 0 ]]; then
+		echo -e "\n${c}Creating a combined logical volume of size ${y}$[$noofloop*$sizeofloop]Mb${reset}${reset}"
 		for loopfile in $(seq 1 $noofloop); do
 			arrloopfiles+=$(mktemp --suffix=_loopdev ; echo " ")	
 		done
@@ -54,31 +69,53 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			
 		
 		for loopdev in ${loopdevicearr[@]}; do
-			vgcreate $vg $loopdev
-			vgextend $vg $loopdev
+			vgcreate $vg $loopdev  2>/dev/null
+			vgextend $vg $loopdev  2>/dev/null 
+		done | while read line ; do
+			echo ${g}$line${reset}
 		done
 		
-		read -p "What type of lvm do you want to create : (l)inear (s)triped:" lvmtype
+		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}:" lvmtype
 		
 		freespaceinvg=$(vgs | grep -Ei "$vg" | cut -d ' ' -f 15)
 
 		case $lvmtype in
 			l)
-			lvcreate --type linear -L $freespaceinvg -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg
-			echo "Running lvs to display created logical volume"
-			lvs
+			lvcreate --type linear -L $freespaceinvg -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+			echo -e "\n${g}$line${reset}"
+		done
+			echo -e "\n${y}Running lvs to display created logical volume${reset}"
+			lvs | while read line; do
+				if [[ $line =~ 'linear_lv' ]]; then
+					echo ${g}${line}${reset}
+				else
+					echo $line
+				fi
+			done
 				;;
 			s)
-				lvcreate --type striped -L $freespaceinvg -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg
-			echo "Running lvs to display created logical volume"
+				lvcreate --type striped -L $freespaceinvg -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+				echo -e "\n${g}${line}${reset}"
+			done
+			echo "${y}Running lvs to display created logical volume${reset}"
+			lvs | while read line; do
+				if [[ $line =~ 'striped_lv' ]]; then
+					echo ${g}$line${reset}
+				else
+					echo $line
+				fi
+			done
+				;;
+			*)
+				echo "Not a valid lvm type"
 				;;
 		esac
 		
-		read -p "Do you want to format with a filesystem (y or n): " formatyorn
+		read -p "Do you want to ${g}format${reset} with a ${c}filesystem${reset} (${g}y${reset} ${b}or${reset} ${r}n${reset}): " formatyorn
 		
 		case $formatyorn in
 			y)
-				read -p "Which filesystem to format with ext(4) ext(3) ext(2):" filesystem
+				read -p "Which ${c}filesystem${reset} to format with ${c}ext${reset}(${y}4${reset}) ${c}ext${reset}(${y}3${reset}) ${c}ext${reset}(${y}2${reset}):" filesystem
 			       	case $filesystem in
 			
 				4)
@@ -99,22 +136,22 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 					;;
 				*)
 
-					echo "Formatting lvm with default ext4 filesystem"
+					echo -e "\n${y}Formatting lvm with default ext4 filesystem${reset}\n"
 					mkfs.ext4 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 )
 					if [[ $? -eq 0 ]]; then
-						echo "Formatted ext4 on lvm !!"
+						echo "${y}Formatted ext4 on lvm !!${reset}"
 					fi
 					fsdir=$(mktemp --dry-run --suffix=_lvmloopdrive | sed -r 's/\/tmp\///')
 					mkdir -p /mnt/lvmloopfs/$fsdir
 					mount /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) /mnt/lvmloopfs/$fsdir
-					echo "Find mounted filesystem on /mnt/lvmloopfs/$fsdir !!"
+					echo "${g}Find mounted filesystem on /mnt/lvmloopfs/$fsdir ${reset} !!"
 					exit 0
 					;;
 				esac
 				;;
 
 			n)
-				echo "Created lvms did not format a filesystem on top so not mounted"
+				echo "${r}Created lvms did not format a filesystem on top so not mounted${reset}"
 				exit 0
 				;;
 			*)
@@ -134,30 +171,33 @@ fi
 
 deleteloop(){
 	if [[ -d "/mnt/lvmloopfs" ]]; then
-		umount /mnt/lvmloopfs/tmp\.*loopdrive
-			echo y | lvremove /dev/mapper/tmp\-\-*tmp*lv
+		umount /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
+			echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
 				rm -rf /tmp/tmp\.*loopdev
-				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 )
+				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
 				if [[ ! -n $(lvs) ]]; then
 					rm -rf /mnt/lvmloopfs/tmp\.*drive
 					if [[ $? -eq 0 ]]; then
 						rm -rf /mnt/lvmloopfs
 					fi
-				fi		
+				fi
 		
+		echo "${g}Successfully done with deleting${reset}"		
 	else
-		echo "lvmloopfs directory does not exist. Deleting the rest"
-		echo y | lvremove /dev/mapper/tmp\-\-*tmp*lv
+		echo "${y}lvmloopfs directory does not exist. ${r}Deleting${reset} any remains${reset}"
+		echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
 		rm -rf /tmp/tmp\.*loopdev
-		losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 )
+		losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
 		if [[ ! -n $(lvs) ]]; then
 			rm -rf /mnt/lvmloopfs/tmp\.*drive
 			if [[ $? -eq 0 ]]; then 
 				rm -rf /mnt/lvmloopfs
 			fi
 		fi
+
+		echo "${g}Successfully done with deleting${reset}"		
 	fi
-}
+} 2>/dev/null
 
 while getopts ':hdi' opts; do
 	case $opts in
@@ -170,7 +210,7 @@ while getopts ':hdi' opts; do
 			exit 1
 			;;
 		d)
-			echo "Attempting to delete loopdrives created"
+			echo "${y}Attempting to delete loopdrives created${reset}"
 			deleteloop
 			exit 0
 			;;
