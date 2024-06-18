@@ -17,10 +17,10 @@ greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
-	${c}usage:${reset} ./lvmlooper.sh [-h|-i|d] 
-		-h : Help section 
-		-i : Interactive mode
-		-d : delete existing lvms created through lvmlooper
+	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}] 
+		${y}-h${reset} : Help section
+		${y}-i${reset} : ${c}Interactive mode${reset}
+		${y}-d${reset} : Delete existing lvms created through lvmlooper
 		
 EOF
 }
