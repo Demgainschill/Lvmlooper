@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/bash
 
-## This program creates lvms using loop devices instead of block devices. It is an interactive user friendly program written completely in bash
+## This program creates filesystems on top of lvms using loop devices instead of block devices as the base/physical volumes. It is an interactive user friendly program written completely in bash
 ##
 
 declare -i noofloop
@@ -24,6 +24,43 @@ usage(){
 		
 EOF
 }
+errormsg(){
+	echo "${r}Error downloading the ${1} tool from the ${2} package${reset}"
+	echo "${r}Need to install ${1} tool inorder for program to run properly.${reset}"
+	exit 1
+}	
+
+dependencies(){
+	#LVM dependency check
+	echo "Performing dependency check"
+
+	if [[ -n $(which lvm) ]]; then
+		echo "${g}lvm exists${reset}"
+	else
+		echo "${y}Installing lvm from lvm2 package...${reset}"
+		apt-get install lvm2
+		if [[ $? -eq 1 ]]; then
+			errormsg "lvm" "lvm2"
+		fi
+
+	fi
+	
+	#mkfs dependency check 
+	
+	if [[ -n $(which mkfs) ]]; then
+		echo "${g}mkfs exists${reset}"
+	else
+		echo "${y}Installing mkfs from dosfstools package...${reset}"
+		apt-get install dosfstools
+		if [[ $? -eq 1 ]]; then
+			errormsg "mkfs" "dosfstools"
+		fi
+	fi
+       	
+	
+}
+
+dependencies
 
 fscreator(){
 		echo -e "\n${y}Formatting lvm with ext$1 filesystem${reset}${reset}"
@@ -199,6 +236,8 @@ deleteloop(){
 	fi
 } 2>/dev/null
 
+	
+
 while getopts ':hdi' opts; do
 	case $opts in
 		h)
@@ -234,4 +273,5 @@ if [[ $# -ge 1 ]]; then
 	echo "Too many arguments"
 	usage
 	exit 1
-fi 
+fi
+
