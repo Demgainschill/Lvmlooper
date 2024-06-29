@@ -3,6 +3,7 @@
 ## This program creates filesystems on top of lvms using loop devices instead of block devices as the base/physical volumes. It is an interactive user friendly program written completely in bash
 ##
 
+
 declare -i noofloop
 declare -i sizeofloop
 declare -a arrloopfiles
@@ -32,10 +33,11 @@ errormsg(){
 
 dependencies(){
 	#LVM dependency check
-	echo "Performing dependency check"
+	echo -e "${y}Performing dependency check...${reset}" 
 
 	if [[ -n $(which lvm) ]]; then
 		echo "${g}lvm exists${reset}"
+		lvm=1
 	else
 		echo "${y}Installing lvm from lvm2 package...${reset}"
 		apt-get install lvm2
@@ -49,6 +51,7 @@ dependencies(){
 	
 	if [[ -n $(which mkfs) ]]; then
 		echo "${g}mkfs exists${reset}"
+		mkfs=1
 	else
 		echo "${y}Installing mkfs from dosfstools package...${reset}"
 		apt-get install dosfstools
@@ -56,11 +59,15 @@ dependencies(){
 			errormsg "mkfs" "dosfstools"
 		fi
 	fi
-       	
+       	if [[ $lvm -eq 1 ]] && [[ $mkfs -eq 1 ]];then 
+		echo -e "${g}Dependencies checked Running program\n${reset}"
+	fi
 	
 }
 
-dependencies
+if [[ -n $1 ]]; then
+	dependencies
+fi
 
 fscreator(){
 		echo -e "\n${y}Formatting lvm with ext$1 filesystem${reset}${reset}"
