@@ -22,7 +22,8 @@ usage(){
 		${y}-h${reset} : Help section
 		${y}-i${reset} : ${c}Interactive mode${reset}
 		${y}-d${reset} : Delete existing lvms created through lvmlooper
-		
+		${y}-l${reset} : List existing files created through lvmlooper
+				
 EOF
 }
 errormsg(){
@@ -33,6 +34,8 @@ errormsg(){
 
 dependencies(){
 	#LVM dependency check
+if [[ ! -n $( ls .lvmlooperDependency 2>/dev/null) ]]; then 
+	echo "${r}Dependency file .lvmlooperDependency not found.${reset} ${g}Creating a new one.${reset}"
 	echo -e "${y}Performing dependency check...${reset}" 
 
 	if [[ -n $(which lvm) ]]; then
@@ -62,6 +65,15 @@ dependencies(){
        	if [[ $lvm -eq 1 ]] && [[ $mkfs -eq 1 ]];then 
 		echo -e "${g}Dependencies checked Running program\n${reset}"
 	fi
+	if [[ $? -eq 0 ]]; then 
+		touch .lvmlooperDependency
+		echo "Contains Dependency" > .lvmlooperDependency
+		
+	fi
+
+fi 
+
+	
 	
 }
 
@@ -245,7 +257,7 @@ deleteloop(){
 
 	
 
-while getopts ':hdi' opts; do
+while getopts ':hdil' opts; do
 	case $opts in
 		h)
 			usage
@@ -258,6 +270,19 @@ while getopts ':hdi' opts; do
 		d)
 			echo "${y}Attempting to delete loopdrives created${reset}"
 			deleteloop
+			exit 0
+			;;
+		l)
+			if [[ -d "/mnt/lvmloopfs" ]]; then
+				if [[ $( ls /mnt/lvmloopfs ) ]]; then 
+					allfs=$(ls /mnt/lvmloopfs)
+					total=$(ls /mnt/lvmloopfs | wc -l)
+					echo "${b}$allfs${reset}"
+					echo -e "\n${c}Total filesystems:${reset}${g} $total ${reset}"
+				fi
+			else
+				echo "${r}No loopdrive found or mounted${reset}"
+			fi
 			exit 0
 			;;
 		\?)

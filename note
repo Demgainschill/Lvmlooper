@@ -3,7 +3,7 @@ THe basic algorithm of what the program must do :
 Use of flags is to determine what must be created 
 I (interactive mode)
 h (help)
-l (size) 
+l (list existing loop devices) 
 n (number of loop devices)
 f (filesystem to be used)
 N (Name of the loop device)
@@ -18,3 +18,5 @@ Does the user want to add a filesystem on top of this lvm? y or n
 IF yes what type of filesystem does he want to create (give options) 
 Where does he want to mount the filesystems (give options) 
 
+create a tmp file to save if dependency check were to be happen
+create a tmp file to save if dependency check were to be happen
