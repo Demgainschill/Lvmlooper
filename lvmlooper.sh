@@ -18,11 +18,11 @@ greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
-	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}] 
-		${y}-h${reset} : Help section
-		${y}-i${reset} : ${c}Interactive mode${reset}
-		${y}-d${reset} : Delete existing lvms created through lvmlooper
-		${y}-l${reset} : List existing files created through lvmlooper
+	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}] 
+		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
+		${y}-i${reset} : ${greensoo}Interactive${reset}${c} mode${reset}
+		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
+		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
 				
 EOF
 }
@@ -227,7 +227,11 @@ fi
 
 deleteloop(){
 	if [[ -d "/mnt/lvmloopfs" ]]; then
-		umount /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
+		read -p "${y}Are you sure you want to delete all loop-drives mounted? (${g}y${reset}${y})es or (${r}n${reset}${y})o :${reset}" loopquestion
+		
+		if [[ $loopquestion =~ "y" ]]; then
+			echo "${y}Attempting to delete loopdrives created${reset}"
+			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
 			echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
 				rm -rf /tmp/tmp\.*loopdev
 				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
@@ -238,9 +242,18 @@ deleteloop(){
 					fi
 				fi
 		
-		echo "${g}Successfully done with deleting${reset}"		
+		echo "${g}Successfully done with deleting${reset}"
+		elif [[ $loopquestion =~ "n" ]]; then
+			echo "Not deleting existing lvmdrives"
+			exit 1
+		else
+			echo "Invalid input entered. Please respond with '(y)es' or '(n)o'."
+			exit 1
+		fi
+			
 	else
 		echo "${y}lvmloopfs directory does not exist. ${r}Deleting${reset} any remains${reset}"
+		
 		echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
 		rm -rf /tmp/tmp\.*loopdev
 		losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
@@ -253,7 +266,7 @@ deleteloop(){
 
 		echo "${g}Successfully done with deleting${reset}"		
 	fi
-} 2>/dev/null
+} 
 
 	
 
@@ -268,7 +281,6 @@ while getopts ':hdil' opts; do
 			exit 1
 			;;
 		d)
-			echo "${y}Attempting to delete loopdrives created${reset}"
 			deleteloop
 			exit 0
 			;;

@@ -1,0 +1,8 @@
+We need to extend the lvmlooper project how can we is the main question
+
+dockerize 
+Ability to resize(risky) and extend existing lvms
+Ability to take periodic snapshots of the mounted fs 
+Thin provisioning
+
+Take it to a new platform use podman  
