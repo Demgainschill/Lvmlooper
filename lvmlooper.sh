@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+
+#set -x
 ## This program creates filesystems on top of lvms using loop devices instead of block devices as the base/physical volumes. It is an interactive user friendly program written completely in bash
 ##
 
@@ -14,6 +16,7 @@ g=$(tput setaf 10)
 y=$(tput setaf 3)
 reset=$(tput sgr0)
 c=$(tput setaf 14)
+o=$(tput setaf 208) 
 greensoo=$(tput setaf 48)
 
 usage(){
@@ -108,12 +111,19 @@ read -p "How many ${c}loop devices${reset} do you want to ${g}create${reset}:" n
 if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 	read -p "${y}Size${reset} of each ${c}loop device${reset} in ${g}Mb${reset}: " sizeofloop
 	if [[ $sizeofloop -gt 0 ]]; then
-		echo -e "\n${c}Creating a combined logical volume of size ${y}$[$noofloop*$sizeofloop]Mb${reset}${reset}"
+		totalsize=$[$noofloop*$sizeofloop]
+		
+		echo -e "\n${c}Creating a combined logical volume of size ${y}$totalsize ${o}Mb${reset}${reset}"
 		for loopfile in $(seq 1 $noofloop); do
 			arrloopfiles+=$(mktemp --suffix=_loopdev ; echo " ")	
 		done
 		for loopfile in ${arrloopfiles[@]}; do 
 			fallocate -l $sizeofloop"M" $loopfile
+			if [[ $? -eq 1 ]]; then
+				
+				exit 1
+			fi
+				
 		done
 		for loopfile in ${arrloopfiles[@]}; do
 			losetup -f $loopfile
@@ -137,11 +147,11 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 
 		case $lvmtype in
 			l)
-			lvcreate --type linear -L $freespaceinvg -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
-			echo -e "\n${g}$line${reset}"
-		done
-			echo -e "\n${y}Running lvs to display created logical volume${reset}"
-			lvs | while read line; do
+				lvcreate --type linear -L "${freespaceinvg//.00m/}" -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+					echo -e "\n${g}$line${reset}"
+				done
+				echo -e "\n${y}Running lvs to display created logical volume${reset}"
+				lvs | while read line; do
 				if [[ $line =~ 'linear_lv' ]]; then
 					echo ${g}${line}${reset}
 				else
@@ -150,7 +160,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			done
 				;;
 			s)
-				lvcreate --type striped -L $freespaceinvg -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+				lvcreate --type striped -L ${freespaceinvg//.00m/} -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
 				echo -e "\n${g}${line}${reset}"
 			done
 			echo "${y}Running lvs to display created logical volume${reset}"
@@ -164,6 +174,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 				;;
 			*)
 				echo "Not a valid lvm type"
+				exit 1
 				;;
 		esac
 		
@@ -207,7 +218,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 				;;
 
 			n)
-				echo "${r}Created lvms did not format a filesystem on top so not mounted${reset}"
+				echo "${r}Created lvms have not been format with a filesystem on top so not mounting!${reset}"
 				exit 0
 				;;
 			*)
