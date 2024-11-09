@@ -281,7 +281,7 @@ deleteloop(){
 
 	
 
-while getopts ':hdil' opts; do
+while getopts ':hdile' opts; do
 	case $opts in
 		h)
 			usage
@@ -308,6 +308,9 @@ while getopts ':hdil' opts; do
 			fi
 			exit 0
 			;;
+		e)
+			echo "Choose which Filesystem to extend"
+			
 		\?)
 			echo "Invalid option"
 			;;
