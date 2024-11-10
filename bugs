@@ -1,7 +1,0 @@
-4 bugs
-
-fallocate taking space from one partition tmp 
-where to store loop device files 
-give option to user but can make noob friendly (default)
-
-if number of loop greater than 
