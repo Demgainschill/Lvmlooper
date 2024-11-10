@@ -281,7 +281,7 @@ deleteloop(){
 
 	
 
-while getopts ':hdile' opts; do
+while getopts ':hdilec' opts; do
 	case $opts in
 		h)
 			usage
@@ -310,6 +310,177 @@ while getopts ':hdile' opts; do
 			;;
 		e)
 			echo "Choose which Filesystem to extend"
+			echo "Choose which Filesystem to connect"
+			echo "Filesystems currently mounted"
+
+			declare -A lv_mounts
+
+while read -r device mount_point; do
+    lv_mounts["$device"]="$mount_point"
+done < <(df -h | gawk '{ print $1,$6}' | grep -Ei '/dev/mapper/.*_lv\s')
+
+display_mount_points() {
+    echo "Available mount points:"
+    local i=1
+    for mount_point in "${lv_mounts[@]}"; do
+        echo "$i) $mount_point"
+        i=$((i + 1))
+    done
+}
+
+select_mount_point() {
+    local selected_number
+    declare -g selected_mount_point
+    local selected_device
+    while true; do
+        display_mount_points
+        read -p "Please enter the number corresponding to the mount point you want to select: " selected_number
+        if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
+            selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
+            # Find the corresponding device
+            for device in "${!lv_mounts[@]}"; do
+                if [[ "${lv_mounts[$device]}" == "$selected_mount_point" ]]; then
+                    selected_device=$device
+                    break
+                fi
+            done
+            echo "You selected: $selected_mount_point"
+            echo "Corresponding device: $selected_device"
+	fi
+	read -p "Enter amount of size to extend and allocate in (Mb): " extend
+	vg=$(echo "$selected_device" | grep -Eio 'tmp.*vg-tmp' | sed -r 's/--/-/' | sed -r 's/-tmp//')
+	vfree=$(vgs | grep -Ei "$vg" | tr " " "\n" | sed -r '/^$/d' | tail -n 1 | sed -r 's/m//'| sed -r 's/\.00//')
+	lv=$(echo "$selected_device" | grep -Eio "tmp\..*lv") 
+	
+	echo "Vfree in Volume group $vg : $vfree Mb"
+	if [[ $extend -le $vfree ]]; then
+		echo "extending by $extend Mb"
+		lvextend -L "+$extend\M" $lv 	
+			if [[ $? -eq 0 ]]; then
+				resize2fs $selected_device
+			fi
+	else
+		echo "No space available creating loop device to add space"
+		loopFilePath=$(mktemp --suffix=_loopdev)
+		fallocate -l $extend"M" $loopFilePath
+       			if [[ $? -eq 0 ]]; then
+				losetup -f $loopFilePath
+				losetupDevice=$(losetup -a | grep -Ei "$loopFilePath" | cut -d ':' -f 1)
+				pvcreate $losetupDevice 
+				vgextend $vg $losetupDevice
+				errormsg=$(lvextend -L "+"$extend"M" $selected_device 2>&1)
+					if [[ $? -eq 1 ]];then 
+						echo "lol"	
+					fi		
+				resize2fs $selected_device
+				echo "Done adding and extending by $extend Mb"
+				echo "Updated device information"
+				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
+				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/Fs_size: &/")
+				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/Fs_used: &/")
+				fs_avail=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 4 | sed -rn '4p') | sed -r "s/.*/Space Avail: &/")
+				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/Used Percentage: &/")
+				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/Mounted On: &/")
+				
+				echo $fs_info
+				echo $fs_size
+				echo $fs_used
+				echo $fs_avail
+				echo $fs_use_perc
+				echo $fs_mounted_on
+
+				exit 0
+			fi	
+		exit 1
+	fi
+
+	done
+}
+select_mount_point 
+
+			;;
+		c)
+			echo "Choose which Filesystem to connect"
+			echo "Filesystems currently mounted"
+
+			declare -A lv_mounts
+
+while read -r device mount_point; do
+    lv_mounts["$device"]="$mount_point"
+done < <(df -h | gawk '{ print $1,$6}' | grep -Ei '/dev/mapper/.*_lv\s')
+
+display_mount_points() {
+    echo "Available mount points:"
+    local i=1
+    for mount_point in "${lv_mounts[@]}"; do
+        echo "$i) $mount_point"
+        i=$((i + 1))
+    done
+}
+
+select_mount_point() {
+    local selected_number
+    declare -g selected_mount_point
+    local selected_device
+    while true; do
+        display_mount_points
+        read -p "Please enter the number corresponding to the mount point you want to select: " selected_number
+        if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
+            selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
+            for device in "${!lv_mounts[@]}"; do
+                if [[ "${lv_mounts[$device]}" == "$selected_mount_point" ]]; then
+                    selected_device=$device
+                    break
+                fi
+            done
+            echo "You selected: $selected_mount_point"
+            echo "Corresponding device: $selected_device"
+list_containers() {
+    echo "Available containers:"
+    podman ps -a --format "{{.ID}} {{.Names}} {{.Status}}" | nl -v 1
+}
+
+select_container() {
+    local selected_number
+    local container_info
+    declare -g container_id
+    while true; do
+        list_containers
+        read -p "Please enter the number corresponding to the container you want to select: " selected_number
+        container_info=$(podman ps -a --format "{{.ID}} {{.Names}} {{.Status}}" | nl -v 1 | awk -v num=$selected_number 'NR==num')
+        if [[ -n "$container_info" ]]; then
+            container_id=$(echo "$container_info" | awk '{print $2}')
+            break
+        else
+            echo "Invalid selection. Please try again."
+        fi
+    done
+}
+
+select_container
+	
+	echo "Attempting to connect device to container"
+	echo $selected_device $container_id
+       	podman start $container_id 
+	if [[ $? -eq 0 ]]; then
+		echo "podman started container"
+		mount --bind $selected_mount_point $(echo "$(podman mount $container_id)/mnt" | sed -r 's/ //g')
+			if [[ $? -eq 0 ]]; then
+				podman exec -it $container_id /bin/bash
+			fi
+	fi	
+	    break
+        else
+            echo "Invalid selection. Please try again."
+        fi
+    done
+}
+
+select_mount_point
+
+
+			
+			;;
 			
 		\?)
 			echo "Invalid option"
