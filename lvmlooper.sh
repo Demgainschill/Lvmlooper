@@ -120,7 +120,8 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		for loopfile in ${arrloopfiles[@]}; do 
 			fallocate -l $sizeofloop"M" $loopfile
 			if [[ $? -eq 1 ]]; then
-				
+				echo "No space on /tmp"
+				echo "Exiting!"	
 				exit 1
 			fi
 				
@@ -143,11 +144,10 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		
 		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}:" lvmtype
 		
-		freespaceinvg=$(vgs | grep -Ei "$vg" | cut -d ' ' -f 15)
-
+		freespaceinvg=$(vgs | grep -Ei "$vg" | tr ' ' '\n' | sed -r '/^$/d' | tail -n 1)
 		case $lvmtype in
 			l)
-				lvcreate --type linear -L "${freespaceinvg//.00m/}" -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+				lvcreate --type linear -l 100%FREE -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
 					echo -e "\n${g}$line${reset}"
 				done
 				echo -e "\n${y}Running lvs to display created logical volume${reset}"
@@ -160,7 +160,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			done
 				;;
 			s)
-				lvcreate --type striped -L ${freespaceinvg//.00m/} -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
+				lvcreate --type striped -l 100%FREE -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
 				echo -e "\n${g}${line}${reset}"
 			done
 			echo "${y}Running lvs to display created logical volume${reset}"
@@ -242,8 +242,9 @@ deleteloop(){
 		
 		if [[ $loopquestion =~ "y" ]]; then
 			echo "${y}Attempting to delete loopdrives created${reset}"
+			umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
 			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
-			echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
+			echo yes | lvremove /dev/mapper/tmp\-\-*lv 2>/dev/null
 				rm -rf /tmp/tmp\.*loopdev
 				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
 				if [[ ! -n $(lvs) ]]; then
@@ -252,7 +253,7 @@ deleteloop(){
 						rm -rf /mnt/lvmloopfs
 					fi
 				fi
-		
+		rm -rf /mnt/lvmloopfs	
 		echo "${g}Successfully done with deleting${reset}"
 		elif [[ $loopquestion =~ "n" ]]; then
 			echo "Not deleting existing lvmdrives"
@@ -264,8 +265,9 @@ deleteloop(){
 			
 	else
 		echo "${y}lvmloopfs directory does not exist. ${r}Deleting${reset} any remains${reset}"
-		
-		echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv
+		umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
+		umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
+		echo yes | lvremove /dev/mapper/tmp\-\-*tmp*lv 2>/dev/null
 		rm -rf /tmp/tmp\.*loopdev
 		losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
 		if [[ ! -n $(lvs) ]]; then
@@ -310,7 +312,6 @@ while getopts ':hdilec' opts; do
 			;;
 		e)
 			echo "Choose which Filesystem to extend"
-			echo "Choose which Filesystem to connect"
 			echo "Filesystems currently mounted"
 
 			declare -A lv_mounts
@@ -353,13 +354,30 @@ while getopts ':hdilec' opts; do
 	
 			echo "Vfree in Volume group $vg : $vfree Mb"
 		if [[ $extend -le $vfree ]]; then
-			echo "extending by $extend Mb"
-			lvextend -L "+$extend\M" $lv 	
+			lvextend -L '+'$extend"M" $vg 	
 				if [[ $? -eq 0 ]]; then
 					resize2fs $selected_device
 				fi
+			echo "Done adding and extending by $extend Mb"
+				echo "Updated device information"
+				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
+				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/Fs_size: &/")
+				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/Fs_used: &/")
+				fs_avail=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 4 | sed -rn '4p') | sed -r "s/.*/Space Avail: &/")
+				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/Used Percentage: &/")
+				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/Mounted On: &/")
+				
+				echo $fs_info
+				echo $fs_size
+				echo $fs_used
+				echo $fs_avail
+				echo $fs_use_perc
+				echo $fs_mounted_on
+
+				exit 0
+
 		else
-		echo "No space available creating loop device to add space"
+		echo "Not enough space available in vg creating loop device to add space"
 		loopFilePath=$(mktemp --suffix=_loopdev)
 		fallocate -l $extend"M" $loopFilePath
        			if [[ $? -eq 0 ]]; then
@@ -367,10 +385,19 @@ while getopts ':hdilec' opts; do
 				losetupDevice=$(losetup -a | grep -Ei "$loopFilePath" | cut -d ':' -f 1)
 				pvcreate $losetupDevice 
 				vgextend $vg $losetupDevice
-				errormsg=$(lvextend -L "+"$extend"M" $selected_device 2>&1)
+				errormsg=$(lvextend -L "+"$extend"M" $selected_device 2>&1 >/dev/null) 
+					
+				
 					if [[ $? -eq 1 ]];then 
-						echo "lol"	
+						echo "Errors encountered"
+						echo "Exiting"
+						exit 1	
 					fi		
+				if [[ -n $errormsg ]] && [[ $errormsg =~ [0-9]{0,5}[[:space:]]available ]]; then
+					extent=$(echo "$errormsg" | grep -Eio "[0-9]{0,5}\savailable" | gawk '{ print $1 }')
+					lvextend -l "+"$extent $selected_device
+					echo "Extending by $extent" 	
+				fi
 				resize2fs $selected_device
 				echo "Done adding and extending by $extend Mb"
 				echo "Updated device information"
@@ -389,6 +416,10 @@ while getopts ':hdilec' opts; do
 				echo $fs_mounted_on
 
 				exit 0
+			else
+				echo "No space on Partition /tmp"
+				echo "Exiting"
+				exit 1
 			fi	
 		exit 1
 	fi
@@ -459,7 +490,6 @@ select_mount_point
 		select_container
 	
 		echo "Attempting to connect device to container"
-		echo $selected_device $container_id
        		podman start $container_id 
 		if [[ $? -eq 0 ]]; then
 			echo "podman started container"
