@@ -120,8 +120,8 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		for loopfile in ${arrloopfiles[@]}; do 
 			fallocate -l $sizeofloop"M" $loopfile
 			if [[ $? -eq 1 ]]; then
-				echo "No space on /tmp"
-				echo "Exiting!"	
+				echo "${r}No space on /tmp${reset}"
+				echo "${r}Exiting!${reset}"	
 				exit 1
 			fi
 				
@@ -173,7 +173,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			done
 				;;
 			*)
-				echo "Not a valid lvm type"
+				echo "${r}Not a valid lvm type${reset}"
 				exit 1
 				;;
 		esac
@@ -222,7 +222,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 				exit 0
 				;;
 			*)
-				echo "Invalid argument"
+				echo "${r}Invalid argument${reset}"
 				usage
 				exit 1
 				;;
@@ -256,10 +256,10 @@ deleteloop(){
 		rm -rf /mnt/lvmloopfs	
 		echo "${g}Successfully done with deleting${reset}"
 		elif [[ $loopquestion =~ "n" ]]; then
-			echo "Not deleting existing lvmdrives"
+			echo "${g}Not deleting existing lvmdrives${reset}"
 			exit 1
 		else
-			echo "Invalid input entered. Please respond with '(y)es' or '(n)o'."
+			echo "${r}Invalid input entered. Please respond with '(y)es' or '(n)o'.${reset}"
 			exit 1
 		fi
 			
@@ -311,8 +311,8 @@ while getopts ':hdilec' opts; do
 			exit 0
 			;;
 		e)
-			echo "Choose which Filesystem to extend"
-			echo "Filesystems currently mounted"
+			echo "${o}Choose which Filesystem to extend${reset}"
+			echo "${o}Filesystems currently mounted${reset}"
 
 			declare -A lv_mounts
 
@@ -321,10 +321,10 @@ while getopts ':hdilec' opts; do
 			done < <(df -h | gawk '{ print $1,$6}' | grep -Ei '/dev/mapper/.*_lv\s')
 
 			display_mount_points() {
-   				 echo "Available mount points:"
+   				 echo "${b}Available mount points:${reset}"
     				 local i=1
     				for mount_point in "${lv_mounts[@]}"; do
-        				echo "$i) $mount_point"
+        				echo "${y}$i)${reset} ${o}$mount_point${reset}"
         				i=$((i + 1))
     				done
 			}
@@ -335,7 +335,7 @@ while getopts ':hdilec' opts; do
     			local selected_device
     			while true; do
         			display_mount_points
-        			read -p "Please enter the number corresponding to the mount point you want to select: " selected_number
+        			read -p "Please enter the ${y}number${reset} corresponding to the ${y}mount point${reset} you want to ${o}extend${reset}: " selected_number
         			if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
             			selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
            		 	for device in "${!lv_mounts[@]}"; do
@@ -344,22 +344,22 @@ while getopts ':hdilec' opts; do
                     		break
                 		fi
             		done
-            		echo "You selected: $selected_mount_point"
-            		echo "Corresponding device: $selected_device"
+            		echo "${b}Selected:${reset} ${o}$selected_mount_point${reset}"
 			fi
-			read -p "Enter amount of size to extend and allocate in (Mb): " extend
+			read -p "Enter amount of ${y}size${reset} to extend and allocate in ${g}(Mb)${reset}: " extend
 			vg=$(echo "$selected_device" | grep -Eio 'tmp.*vg-tmp' | sed -r 's/--/-/' | sed -r 's/-tmp//')
 			vfree=$(vgs | grep -Ei "$vg" | tr " " "\n" | sed -r '/^$/d' | tail -n 1 | sed -r 's/m//'| sed -r 's/\.00//')
 			lv=$(echo "$selected_device" | grep -Eio "tmp\..*lv") 
 	
-			echo "Vfree in Volume group $vg : $vfree Mb"
+			echo "${b}Vfree in Volume group${reset} ${o}$vg${reset} : $vfree Mb"
 		if [[ $extend -le $vfree ]]; then
 			lvextend -L '+'$extend"M" $vg 	
 				if [[ $? -eq 0 ]]; then
 					resize2fs $selected_device
 				fi
-			echo "Done adding and extending by $extend Mb"
-				echo "Updated device information"
+			echo "${g}Done adding and extending by $extend Mb${reset}"
+				
+			echo "${b}Updated device information${reset}"
 				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
 				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/Fs_size: &/")
 				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/Fs_used: &/")
@@ -377,7 +377,7 @@ while getopts ':hdilec' opts; do
 				exit 0
 
 		else
-		echo "Not enough space available in vg creating loop device to add space"
+		echo "${y}Not enough space available in vg creating loop device to add space${reset}"
 		loopFilePath=$(mktemp --suffix=_loopdev)
 		fallocate -l $extend"M" $loopFilePath
        			if [[ $? -eq 0 ]]; then
@@ -389,18 +389,18 @@ while getopts ':hdilec' opts; do
 					
 				
 					if [[ $? -eq 1 ]];then 
-						echo "Errors encountered"
-						echo "Exiting"
+						echo "${r}Errors encountered${reset}"
+						echo "${r}Exiting${reset}"
 						exit 1	
 					fi		
 				if [[ -n $errormsg ]] && [[ $errormsg =~ [0-9]{0,5}[[:space:]]available ]]; then
 					extent=$(echo "$errormsg" | grep -Eio "[0-9]{0,5}\savailable" | gawk '{ print $1 }')
 					lvextend -l "+"$extent $selected_device
-					echo "Extending by $extent" 	
+					echo "${y}Extending by $extent extents${reset}" 	
 				fi
 				resize2fs $selected_device
-				echo "Done adding and extending by $extend Mb"
-				echo "Updated device information"
+				echo "${g}Done adding and extending by $extend Mb${reset}"
+				echo "${b}Updated device information${reset}"
 				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
 				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/Fs_size: &/")
 				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/Fs_used: &/")
@@ -417,8 +417,8 @@ while getopts ':hdilec' opts; do
 
 				exit 0
 			else
-				echo "No space on Partition /tmp"
-				echo "Exiting"
+				echo "${r}No space on Partition /tmp${reset}"
+				echo "${r}Exiting${reset}"
 				exit 1
 			fi	
 		exit 1
@@ -430,8 +430,8 @@ select_mount_point
 
 			;;
 		c)
-			echo "Choose which Filesystem to connect"
-			echo "Filesystems currently mounted"
+			echo "Choose which ${y}Filesystem${reset} to ${o}connect${reset}"
+			echo "${b}Filesystems currently mounted${reset}"
 
 			declare -A lv_mounts
 
@@ -440,10 +440,10 @@ select_mount_point
 			done < <(df -h | gawk '{ print $1,$6}' | grep -Ei '/dev/mapper/.*_lv\s')
 
 		display_mount_points() {
-    			echo "Available mount points:"
+    			echo "${b}Available mount points:${reset}"
     			local i=1
     			for mount_point in "${lv_mounts[@]}"; do
-        		echo "$i) $mount_point"
+        		echo "${y}$i)${reset} ${o}$mount_point${reset}"
         		i=$((i + 1))
     			done
 		}
@@ -454,7 +454,7 @@ select_mount_point
     		local selected_device
     		while true; do
         		display_mount_points
-        		read -p "Please enter the number corresponding to the mount point you want to select: " selected_number
+        		read -p "Please enter the ${y}number${reset} corresponding to the ${y}mount point${reset} you want to select: " selected_number
         		if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
             		selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
             		for device in "${!lv_mounts[@]}"; do
@@ -463,11 +463,10 @@ select_mount_point
                     	break
                 	fi
             	done
-            	echo "You selected: $selected_mount_point"
-            	echo "Corresponding device: $selected_device"
+            	echo "${b}Selected:${reset} ${o}$selected_mount_point${reset}"
 		list_containers() {
-    			echo "Available containers:"
-    			podman ps -a --format "{{.ID}} {{.Names}} {{.Status}}" | nl -v 1
+    			echo "${b}Available containers:${reset}"
+    			podman ps -a --format "${o}{{.ID}}${reset} ${b}{{.Names}}${reset} ${y}{{.Status}}${reset}" | nl -v 1
 		}
 
 		select_container() {
@@ -476,23 +475,23 @@ select_mount_point
     		declare -g container_id
     		while true; do
         		list_containers
-        		read -p "Please enter the number corresponding to the container you want to select: " selected_number
+        		read -p "Please enter the ${y}number${reset} corresponding to the ${y}container${reset} you want to ${o}connect${reset}: " selected_number
         		container_info=$(podman ps -a --format "{{.ID}} {{.Names}} {{.Status}}" | nl -v 1 | awk -v num=$selected_number 'NR==num')
         		if [[ -n "$container_info" ]]; then
             			container_id=$(echo "$container_info" | awk '{print $2}')
             		break
         		else
-            		echo "Invalid selection. Please try again."
+            		echo "${r}Invalid selection. Please try again.${reset}"
         		fi
     		done
 	}
 
 		select_container
 	
-		echo "Attempting to connect device to container"
+		echo "${y}Attempting to connect device to container${reset}"
        		podman start $container_id 
 		if [[ $? -eq 0 ]]; then
-			echo "podman started container"
+			echo "${g}podman started container${reset} ${o}$container_id${reset}"
 			mount --bind $selected_mount_point $(echo "$(podman mount $container_id)/mnt" | sed -r 's/ //g')
 			if [[ $? -eq 0 ]]; then
 				podman exec -it $container_id /bin/bash
@@ -500,7 +499,7 @@ select_mount_point
 		fi	
 	    	break
         	else
-            	echo "Invalid selection. Please try again."
+            	echo "${r}Invalid selection. Please try again.${reset}"
         fi
     	done
 	}
@@ -510,10 +509,10 @@ select_mount_point
 			;;
 			
 		\?)
-			echo "Invalid option"
+			echo "${r}Invalid option${reset}"
 			;;
 		:)
-			echo "Required argument"
+			echo "${r}Requires argument${reset}"
 			;;
 	esac
 done
@@ -526,7 +525,7 @@ fi
 shift $((OPTIND-1))
 
 if [[ $# -ge 1 ]]; then
-	echo "Too many arguments"
+	echo "${r}Too many arguments${reset}"
 	usage
 	exit 1
 fi
