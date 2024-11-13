@@ -9,6 +9,7 @@
 declare -i noofloop
 declare -i sizeofloop
 declare -a arrloopfiles
+declare -i selected_number
 
 b=$(tput setaf 4)
 r=$(tput setaf 1)
@@ -143,7 +144,10 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		done
 		
 		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}:" lvmtype
-		
+		if [[ ! $lvmtype =~ l ]] || [[ ! $lvmtype ]]; then 
+			usage
+			exit 1 
+		fi 		
 		freespaceinvg=$(vgs | grep -Ei "$vg" | tr ' ' '\n' | sed -r '/^$/d' | tail -n 1)
 		case $lvmtype in
 			l)
@@ -336,6 +340,7 @@ while getopts ':hdilec' opts; do
     			while true; do
         			display_mount_points
         			read -p "Please enter the ${y}number${reset} corresponding to the ${y}mount point${reset} you want to ${o}extend${reset}: " selected_number
+				
         			if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
             			selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
            		 	for device in "${!lv_mounts[@]}"; do
