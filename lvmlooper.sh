@@ -303,17 +303,22 @@ while getopts ':hdilec' opts; do
 			;;
 		l)
 			if [[ -d "/mnt/lvmloopfs" ]]; then
-				if [[ $( ls /mnt/lvmloopfs ) ]]; then 
-					allfs=$(ls /mnt/lvmloopfs)
-					total=$(ls /mnt/lvmloopfs | wc -l)
-					echo "${b}$allfs${reset}"
-					echo -e "\n${c}Total filesystems:${reset}${g} $total ${reset}"
-				fi
+				arr=($(df -h | grep -Eie'/mnt/lvmloopfs/tmp\..*drive' | gawk '{ print $2,$6 }' | sed -r 's/ //' | tr '\n' ' ' ))
+				echo "${o}Total Size${reset}      ${o}Mounted Directories${reset}"
+				for mountDirWithSize in ${arr[@]}; do
+					echo $mountDirWithSize | sed -r 's/([0-9]{1,3}(M|K|G))(.*)/\1 &/g' | sed -r 's/[0-9]{1,3}M|K|G//2' | xargs -n 1 -I {} echo "{}" 2>/dev/null | sed -re "s/[0-9]{1,4}(M|K|G)/${g}&${reset}/" | sed -r "s/\/mnt\/.*drive/${b}&${reset}/" 
+				
+
+					
+
+				done 
 			else
-				echo "${r}No loopdrive found or mounted${reset}"
+				echo "Directory does not exist exiting"
+
+				exit 0
 			fi
-			exit 0
 			;;
+			
 		e)
 			echo "${o}Choose which Filesystem to extend${reset}"
 			echo "${o}Filesystems currently mounted${reset}"
