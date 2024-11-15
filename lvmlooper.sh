@@ -7,7 +7,7 @@
 
 
 declare -i noofloop
-declare -i sizeofloop
+#declare -i sizeofloop
 declare -a arrloopfiles
 declare -i selected_number
 
@@ -111,6 +111,10 @@ read -p "How many ${c}loop devices${reset} do you want to ${g}create${reset}:" n
 
 if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 	read -p "${y}Size${reset} of each ${c}loop device${reset} in ${g}Mb${reset}: " sizeofloop
+	if [[ ! $sizeofloop =~ ^[0-9]+$ ]]; then
+		echo "${r}Invalid size! ${reset}"
+		exit 1
+	fi
 	if [[ $sizeofloop -gt 0 ]]; then
 		totalsize=$[$noofloop*$sizeofloop]
 		
@@ -144,8 +148,8 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		done
 		
 		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}:" lvmtype
-		if [[ ! $lvmtype =~ l ]] || [[ ! $lvmtype ]]; then 
-			usage
+		if [[ ! $lvmtype =~ l|s ]] || [[ ! $lvmtype ]]; then 
+			echo "${r}Not a valid lvm type${reset}"
 			exit 1 
 		fi 		
 		freespaceinvg=$(vgs | grep -Ei "$vg" | tr ' ' '\n' | sed -r '/^$/d' | tail -n 1)
@@ -165,7 +169,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 				;;
 			s)
 				lvcreate --type striped -l 100%FREE -n $(mktemp --dry-run --suffix=_striped_lv | sed -r 's/\/tmp\///') $vg | while read line; do
-				echo -e "\n${g}${line}${reset}"
+				echo "${g}${line}${reset}"
 			done
 			echo "${y}Running lvs to display created logical volume${reset}"
 			lvs | while read line; do
@@ -206,6 +210,10 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 					exit 0
 					;;
 				*)
+					if [[ ! $filesystem =~ ^[2-4]$ ]]; then
+						echo "${r}Invalid filesystem${reset}"
+						exit 1
+					fi
 
 					echo -e "\n${y}Formatting lvm with default ext4 filesystem${reset}\n"
 					mkfs.ext4 /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 )
@@ -321,7 +329,7 @@ while getopts ':hdilec' opts; do
 			
 		e)
 			echo "${o}Choose which Filesystem to extend${reset}"
-			echo "${o}Filesystems currently mounted${reset}"
+			echo "${b}Filesystems currently mounted${reset}"
 
 			declare -A lv_mounts
 
@@ -345,18 +353,27 @@ while getopts ':hdilec' opts; do
     			while true; do
         			display_mount_points
         			read -p "Please enter the ${y}number${reset} corresponding to the ${y}mount point${reset} you want to ${o}extend${reset}: " selected_number
-				
-        			if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
+        			if [[ ! $selected_number =~ ^[0-9]+$ ]]; then 
+					echo "${r}Invalid Selection${reset}"
+					exit 1
+				fi
+				if [[ $selected_number =~ ^[0-9]+$ ]] && (( $selected_number > 0 && $selected_number <= ${#lv_mounts[@]} )); then
             			selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
            		 	for device in "${!lv_mounts[@]}"; do
                 			if [[ "${lv_mounts[$device]}" == "$selected_mount_point" ]]; then
                     		selected_device=$device
                     		break
-                		fi
-            		done
+            			fi
+				
+			done
             		echo "${b}Selected:${reset} ${o}$selected_mount_point${reset}"
 			fi
+			
 			read -p "Enter amount of ${y}size${reset} to extend and allocate in ${g}(Mb)${reset}: " extend
+			if [[ ! $extend =~ ^[0-9]+$ ]]; then
+				echo "${r}Invalid extend value${reset}"
+				exit 1
+			fi
 			vg=$(echo "$selected_device" | grep -Eio 'tmp.*vg-tmp' | sed -r 's/--/-/' | sed -r 's/-tmp//')
 			vfree=$(vgs | grep -Ei "$vg" | tr " " "\n" | sed -r '/^$/d' | tail -n 1 | sed -r 's/m//'| sed -r 's/\.00//')
 			lv=$(echo "$selected_device" | grep -Eio "tmp\..*lv") 
