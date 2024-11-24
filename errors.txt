@@ -1,0 +1,9 @@
+Extending incorrect drive 
+
+coloring the output after extending
+
+Rewriting delete function
+
+copy function from connect listing of devices
+
+

@@ -256,6 +256,7 @@ deleteloop(){
 			echo "${y}Attempting to delete loopdrives created${reset}"
 			umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
 			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
+			
 			echo yes | lvremove /dev/mapper/tmp\-\-*lv 2>/dev/null
 				rm -rf /tmp/tmp\.*loopdev
 				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
@@ -295,7 +296,7 @@ deleteloop(){
 
 	
 
-while getopts ':hdilec' opts; do
+while getopts ':hdilecs' opts; do
 	case $opts in
 		h)
 			usage
@@ -387,19 +388,19 @@ while getopts ':hdilec' opts; do
 			echo "${g}Done adding and extending by $extend Mb${reset}"
 				
 			echo "${b}Updated device information${reset}"
-				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
-				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/Fs_size: &/")
-				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/Fs_used: &/")
-				fs_avail=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 4 | sed -rn '4p') | sed -r "s/.*/Space Avail: &/")
-				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/Used Percentage: &/")
-				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/Mounted On: &/")
+				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/${b}Fs_device:${reset} &/")
+				fs_size=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 2 | sed -rn '2p') | sed -r "s/.*/${b}Fs_size:${reset} &/")
+				fs_used=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 3 | sed -rn '3p') | sed -r "s/.*/${b}Fs_used:${reset} &/")
+				fs_avail=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 4 | sed -rn '4p') | sed -r "s/.*/${b}Space Avail:${reset} &/")
+				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/${b}Used Percentage:${reset} &/")
+				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/${b}Mounted On:${reset} &/")
 				
 				echo $fs_info
 				echo $fs_size
 				echo $fs_used
 				echo $fs_avail
 				echo $fs_use_perc
-				echo $fs_mounted_on
+				echo $fs_mounted_on 
 
 				exit 0
 
@@ -535,6 +536,9 @@ select_mount_point
 			
 			;;
 			
+		s)
+			echo "snapshotting"
+			;;
 		\?)
 			echo "${r}Invalid option${reset}"
 			;;
