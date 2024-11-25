@@ -24,13 +24,15 @@ greensoo=$(tput setaf 48)
 usage(){
 	cat <<EOF
 	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}|${y}-n${reset}] 
-		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
 		${y}-i${reset} : ${g}Create${reset}${c} LVM & loop devices based mounted filesystems/Loopdrives ${reset}(/mnt/lvmloopfs/tmp*loopdrive) ${reset} 
 		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
 		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
 		${y}-c${reset} : ${o}Connect${reset}${c} to existing containers deployed through podman${reset}
 		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted loopdrives On-line${reset}				       
 		${y}-n${reset} : ${g}Create${reset}${c} NFS shares from exising loopdrives${reset}
+		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
+		
+	${o}(${y}-s${reset}${o} Snapshot Coming soon!) ${reset}
 EOF
 
 }
@@ -110,7 +112,7 @@ interactive_mode(){
 echo "${y}Interactive mode${reset}"
 
 
-read -p "How many ${c}loop devices${reset} do you want to ${g}create${reset}:" noofloop
+read -p "How many ${c}loop devices${reset} do you want to ${g}create${reset}: " noofloop
 
 
 if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
@@ -151,7 +153,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			echo ${g}$line${reset}
 		done
 		
-		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}:" lvmtype
+		read -p "What ${y}type${reset} of ${c}lvm${reset} do you want to ${g}create${reset} : ${b}(${reset}${g}l${reset}${b})${reset}${y}inear${reset} ${b}(${reset}${g}s${reset}${b})${reset}${y}triped${reset}: " lvmtype
 		if [[ ! $lvmtype =~ l|s ]] || [[ ! $lvmtype ]]; then 
 			echo "${r}Not a valid lvm type${reset}"
 			exit 1 
@@ -194,7 +196,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		
 		case $formatyorn in
 			y)
-				read -p "Which ${c}filesystem${reset} to format with ${c}ext${reset}(${y}4${reset}) ${c}ext${reset}(${y}3${reset}) ${c}ext${reset}(${y}2${reset}):" filesystem
+				read -p "Which ${c}filesystem${reset} to format with ${c}ext${reset}(${y}4${reset}) ${c}ext${reset}(${y}3${reset}) ${c}ext${reset}(${y}2${reset}): " filesystem
 			       	case $filesystem in
 			
 				4)
@@ -260,7 +262,16 @@ deleteloop(){
 			echo "${y}Attempting to delete loopdrives created${reset}"
 			umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
 			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
-			
+			deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
+			for pv in ${deletepvs[@]} ; do
+				echo 'y' | pvremove --force --force $pv
+				if [[ $? -eq 1 ]]; then
+					echo "error occured while removing pv"
+					exit 1
+				fi
+			done
+				
+			       		
 			echo yes | lvremove /dev/mapper/tmp\-\-*lv 2>/dev/null
 				rm -rf /tmp/tmp\.*loopdev
 				losetup -d $(losetup -l | grep -Ei 'loopdev \(deleted\)' | cut -d ' ' -f 1 ) 2>/dev/null
@@ -271,7 +282,16 @@ deleteloop(){
 						rm -rf /mnt/lvmloopfs
 					fi
 				fi
-		umount -f /mnt/lvmloopfs/tmp.*drive
+				deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
+			for pv in ${deletepvs[@]} ; do
+				echo 'y' | pvremove --force --force $pv
+				if [[ $? -eq 1 ]]; then
+					echo "error occured while removing pv"
+					exit 1
+				fi
+			done
+rm -rf /mnt/lvmloopfs
+		mount -f /mnt/lvmloopfs/tmp.*drive
 		rm -rf /mnt/lvmloopfs
 		if [[ $? -eq 1 ]]; then
 			umount -l /mnt/lvmloopfs/tmp.*drive
@@ -324,7 +344,7 @@ while getopts ':hdilecsn' opts; do
 		l)
 			if [[ -d "/mnt/lvmloopfs" ]]; then
 				arr=($(df -h | grep -Eie'/mnt/lvmloopfs/tmp\..*drive' | gawk '{ print $2,$6 }' | sed -r 's/ //' | tr '\n' ' ' ))
-				echo "${o}Total Size${reset}      ${o}Mounted Directories${reset}"
+				echo "${o}Total Size${reset}      ${o}LoopDrives${reset}"
 				for mountDirWithSize in ${arr[@]}; do
 					echo $mountDirWithSize | sed -r 's/([0-9]{1,3}(M|K|G))(.*)/\1 &/g' | sed -r 's/[0-9]{1,3}M|K|G//2' | xargs -n 1 -I {} echo "{}" 2>/dev/null | sed -re "s/[0-9]{1,4}(M|K|G)/${g}&${reset}/" | sed -r "s/\/mnt\/.*drive/${b}&${reset}/" 
 				
@@ -486,7 +506,7 @@ select_mount_point
 
 			;;
 		c)
-			echo "Choose which ${y}Filesystem${reset} to ${o}connect${reset}"
+			echo "Choose which ${y}Filesystem${reset} to ${o}connect${reset} to ${o}container${reset}"
 			echo "${b}Filesystems currently mounted${reset}"
 
 			declare -A lv_mounts
@@ -638,7 +658,7 @@ select_mount_point
 		echo "${g}Adding lvmdrive as a share in /etc/exports file${reset}"
 		echo "$selected_mount_point	*(rw,sync,no_root_squash)" >> /etc/exports
 		if [[ $? -eq 0 ]]; then
-			echo "${y}Listing shares on Server${reset}"
+			echo "${y}Listing shares on Localhost${reset}"
 			exportfs -a 2>/dev/null
 			exportfs -r 2>/dev/null
 			echo -e '\n'
