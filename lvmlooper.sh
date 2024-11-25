@@ -22,12 +22,13 @@ greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
-	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}] 
+	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}] 
 		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
-		${y}-i${reset} : ${greensoo}Interactive${reset}${c} mode${reset}
+		${y}-i${reset} : ${g}Create${reset}${c} LVM & loop devices based mounted filesystems Loopdrives /mnt/lvmloopfs/tmp*loopdrive ${reset} 
 		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
 		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
-				
+		${y}-c${reset} : ${o}Connect${reset}${c} to existing containers deployed through podman${reset}
+		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted filesystems On-line${reset}				
 EOF
 }
 errormsg(){
@@ -296,7 +297,7 @@ deleteloop(){
 
 	
 
-while getopts ':hdilecs' opts; do
+while getopts ':hdilecsn' opts; do
 	case $opts in
 		h)
 			usage
@@ -533,11 +534,68 @@ select_mount_point
 	}
 
 select_mount_point
-			
+	
 			;;
 			
 		s)
-			echo "snapshotting"
+			echo "snapshotting to be added soon"
+			;;
+		n)
+			echo "Attempting to host mount point as nfs share"
+			echo "Choose which ${y}Filesystem${reset} to ${o}connect${reset}"
+			echo "${b}Filesystems currently mounted${reset}"
+
+			declare -A lv_mounts
+
+			while read -r device mount_point; do
+    			lv_mounts["$device"]="$mount_point"
+			done < <(df -h | gawk '{ print $1,$6}' | grep -Ei '/dev/mapper/.*_lv\s')
+
+		display_mount_points() {
+    			echo "${b}Available mount points:${reset}"
+    			local i=1
+    			for mount_point in "${lv_mounts[@]}"; do
+        		echo "${y}$i)${reset} ${o}$mount_point${reset}"
+        		i=$((i + 1))
+    			done
+		}
+
+		select_mount_point() {
+   		local selected_number
+    		declare -g selected_mount_point
+    		local selected_device
+    		while true; do
+        		display_mount_points
+        		read -p "Please enter the ${y}number${reset} corresponding to the ${y}mount point${reset} you want to select: " selected_number
+        		if [[ $selected_number =~ ^[0-9]+$ ]] && (( selected_number > 0 && selected_number <= ${#lv_mounts[@]} )); then
+            		selected_mount_point=$(echo "${lv_mounts[@]}" | awk -v num=$selected_number '{print $num}')
+            		for device in "${!lv_mounts[@]}"; do
+                		if [[ "${lv_mounts[$device]}" == "$selected_mount_point" ]]; then
+                    			selected_device=$device
+                    	break
+                	fi
+            	done
+            	echo "${b}Selected:${reset} ${o}$selected_mount_point${reset}"
+
+
+	
+	    	break
+        	else
+            	echo "${r}Invalid selection. Please try again.${reset}"
+        fi
+    	done
+	}
+
+select_mount_point
+
+	if [[ -f /etc/exports ]] && [[ -n $(grep -Eio "$selected_mount_point" /etc/exports) ]]; then 
+		echo "Export exists"
+		
+	else
+		echo "Creating new /etc/exports file"
+	fi
+			
+
 			;;
 		\?)
 			echo "${r}Invalid option${reset}"
