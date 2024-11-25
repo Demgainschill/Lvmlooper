@@ -405,13 +405,19 @@ while getopts ':hdilecsn' opts; do
 				fs_avail=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 4 | sed -rn '4p') | sed -r "s/.*/${b}Space Avail:${reset} &/")
 				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/${b}Used Percentage:${reset} &/")
 				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/${b}Mounted On:${reset} &/")
-				
-				echo $fs_info
-				echo $fs_size
-				echo $fs_used
-				echo $fs_avail
-				echo $fs_use_perc
-				echo $fs_mounted_on 
+
+				echo $fs_info | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+				echo $fs_size	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_used	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_avail	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_use_perc | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_mounted_on | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+
 
 				exit 0
 
@@ -437,7 +443,13 @@ while getopts ':hdilecsn' opts; do
 					lvextend -l "+"$extent $selected_device
 					echo "${y}Extending by $extent extents${reset}" 	
 				fi
-				resize2fs $selected_device
+				resize2fs $selected_device | while read -r line; do
+					if [[ $line =~ on-line ]]; then
+					echo ${o}${line}${reset}
+					else
+						echo ${g}${line}${reset}
+					fi
+				done
 				echo "${g}Done adding and extending by $extend Mb${reset}"
 				echo "${b}Updated device information${reset}"
 				fs_info=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 1 | sed -rn '1p') | sed -r "s/.*/Fs_device: &/")
@@ -447,12 +459,17 @@ while getopts ':hdilecsn' opts; do
 				fs_use_perc=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 5 | sed -rn '5p') | sed -r "s/.*/Used Percentage: &/")
 				fs_mounted_on=$(echo $(df -h | grep -Ei "$selected_device" | tr ' ' '\n' | sed -r '/^$/d' | head -n 6 | sed -rn '6p') | sed -r "s/.*/Mounted On: &/")
 				
-				echo $fs_info
-				echo $fs_size
-				echo $fs_used
-				echo $fs_avail
-				echo $fs_use_perc
-				echo $fs_mounted_on
+				echo $fs_info | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+				echo $fs_size	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_used	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_avail	| sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_use_perc | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
+				echo $fs_mounted_on | sed -r "s/(.*)(:.*)/${o}\1${reset}${g}\2${reset}/"
+
 
 				exit 0
 			else
