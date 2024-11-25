@@ -272,8 +272,9 @@ deleteloop(){
 					fi
 				fi
 		umount -f /mnt/lvmloopfs/tmp.*drive
+		rm -rf /mnt/lvmloopfs
 		if [[ $? -eq 1 ]]; then
-		#	umount -l /mnt/lvmloopfs/tmp.*drive
+			umount -l /mnt/lvmloopfs/tmp.*drive
 			rm -rf /mnt/lvmloopfs	
 		fi
 		sed -ri 's/\/mnt\/lvmloopfs\/.*\*.*\)//g' /etc/exports
