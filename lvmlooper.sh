@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+export PS4='+ ${BASH_SOURCE}:${LINENO}: '
 
 
 #set -x
@@ -22,14 +23,16 @@ greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
-	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}] 
+	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}|${y}-n${reset}] 
 		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
-		${y}-i${reset} : ${g}Create${reset}${c} LVM & loop devices based mounted filesystems Loopdrives /mnt/lvmloopfs/tmp*loopdrive ${reset} 
+		${y}-i${reset} : ${g}Create${reset}${c} LVM & loop devices based mounted filesystems/Loopdrives ${reset}(/mnt/lvmloopfs/tmp*loopdrive) ${reset} 
 		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
 		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
 		${y}-c${reset} : ${o}Connect${reset}${c} to existing containers deployed through podman${reset}
-		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted filesystems On-line${reset}				
+		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted loopdrives On-line${reset}				       
+		${y}-n${reset} : ${g}Create${reset}${c} NFS shares from exising loopdrives${reset}
 EOF
+
 }
 errormsg(){
 	echo "${r}Error downloading the ${1} tool from the ${2} package${reset}"
@@ -264,10 +267,16 @@ deleteloop(){
 				if [[ ! -n $(lvs) ]]; then
 					rm -rf /mnt/lvmloopfs/tmp\.*drive
 					if [[ $? -eq 0 ]]; then
+						umount /mnt/lvmloopfs
 						rm -rf /mnt/lvmloopfs
 					fi
 				fi
-		rm -rf /mnt/lvmloopfs	
+		umount -f /mnt/lvmloopfs/tmp.*drive
+		if [[ $? -eq 1 ]]; then
+		#	umount -l /mnt/lvmloopfs/tmp.*drive
+			rm -rf /mnt/lvmloopfs	
+		fi
+		sed -ri 's/\/mnt\/lvmloopfs\/.*\*.*\)//g' /etc/exports
 		echo "${g}Successfully done with deleting${reset}"
 		elif [[ $loopquestion =~ "n" ]]; then
 			echo "${g}Not deleting existing lvmdrives${reset}"
@@ -323,9 +332,9 @@ while getopts ':hdilecsn' opts; do
 
 				done 
 			else
-				echo "Directory does not exist exiting"
-
-				exit 0
+				echo "${r}Directory does not exist. Nothing to list. Exiting${reset}"
+				
+				exit 1
 			fi
 			;;
 			
@@ -589,16 +598,48 @@ select_mount_point
 select_mount_point
 
 	if [[ -f /etc/exports ]] && [[ -n $(grep -Eio "$selected_mount_point" /etc/exports) ]]; then 
-		echo "Export exists"
+		echo "${y}Share already exists in /etc/exports. None Added.${reset}"
+		echo -e "\n"
+		showmount -e localhost | while read -r line ; do
+			if [[ $line =~ Export ]]; then
+				echo ${b}$line${reset}
+			else
+				echo ${o}${line}${reset}
+			fi
+		done
+			if [[ $? -eq 1 ]]; then
+				until [[ -n $(systemctl restart nfs-server.service 2>&1 | grep -Ei 'Failed to restart') ]]; do
+					echo "Restarting Service..."	
+					sleep 1
+				done;
+				showmount -e
+			fi 
+				       	
 		
 	else
-		echo "Creating new /etc/exports file"
+		echo "${g}Adding lvmdrive as a share in /etc/exports file${reset}"
+		echo "$selected_mount_point	*(rw,sync,no_root_squash)" >> /etc/exports
+		if [[ $? -eq 0 ]]; then
+			echo "${y}Listing shares on Server${reset}"
+			exportfs -a 2>/dev/null
+			exportfs -r 2>/dev/null
+			echo -e '\n'
+			showmount -e localhost | while read -r line; do 
+				if [[ ${line} =~ Export ]]; then
+					echo ${b}${line}${reset} 
+				else
+				echo ${o}${line}${reset}
+				fi
+			done
+		fi	
 	fi
 			
 
 			;;
 		\?)
 			echo "${r}Invalid option${reset}"
+			usage
+			exit 1
 			;;
 		:)
 			echo "${r}Requires argument${reset}"
