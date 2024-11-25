@@ -351,12 +351,45 @@ while getopts ':hdilecsn' opts; do
 
 					
 
+				
 				done 
+				echo -e '\n'
+				showmount -e localhost | while read -r line; do 
+				if [[ $line =~ list ]]; then
+				 echo ${y}$line${reset} 
+				 
+			 elif [[ $line =~ list ]]; then
+				 echo $line | sed -r 's/Export.*list.*//'
+
+				fi	 
+				if [[ $line =~ /mnt/.*loopdrive.*\* ]]; then
+						echo "${o}${line}${reset}"
+					else
+						echo "$line"
+				fi
+			done
 			else
 				echo "${r}Directory does not exist. Nothing to list. Exiting${reset}"
-				
+				echo -e '\n'
+				showmount -e localhost | while read -r line; do 
+				if [[ $line =~ list ]]; then
+				 echo ${y}$line${reset} 
+				 
+			 elif [[ $line =~ list ]]; then
+				 echo $line | sed -r 's/Export.*list.*//'
+
+				fi	 
+				if [[ $line =~ /mnt/.*loopdrive.*\* ]]; then
+						echo "${o}${line}${reset}"
+					else
+						echo "$line"
+				fi
+
 				exit 1
-			fi
+			done
+				fi | sed -r '/list/{ n ; d }'
+
+
 			;;
 			
 		e)
