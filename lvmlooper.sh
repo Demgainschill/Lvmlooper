@@ -735,7 +735,7 @@ _your_script_name() {
 compdef _your_script_name ${scripath}
 " > $wheresrc
 					source /root/.zshrc 2>/dev/null
-								
+					echo "Custom options zsh auto tab completion enabled"					
 					exit 0
 				fi
 			fi
