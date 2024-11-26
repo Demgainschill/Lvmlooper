@@ -23,7 +23,7 @@ greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
-	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}|${y}-n${reset}] 
+	${c}usage:${reset} ./${g}lvmlooper.sh${reset} [${y}-h${reset}|${y}-i${reset}|${y}-d${reset}|${y}-l${reset}|${y}-c${reset}|${y}-e${reset}|${y}-n${reset}|${y}-z${reset}] 
 		${y}-i${reset} : ${g}Create${reset}${c} LVM & loop devices based mounted filesystems/Loopdrives ${reset}(/mnt/lvmloopfs/tmp*loopdrive) ${reset} 
 		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
 		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
@@ -31,7 +31,7 @@ usage(){
 		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted loopdrives On-line${reset}				       
 		${y}-n${reset} : ${g}Create${reset}${c} NFS shares from exising loopdrives${reset}
 		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
-		
+		${y}-z${reset} : ${r}Enable${reset}${c} Zsh Auto-tab Completion on options for lvmlooper${reset} (zsh users only!)
 	${o}(${y}-s${reset}${o} Snapshot Coming soon!) ${reset}
 EOF
 
@@ -327,7 +327,7 @@ rm -rf /mnt/lvmloopfs
 
 	
 
-while getopts ':hdilecsn' opts; do
+while getopts ':hdilecsnz' opts; do
 	case $opts in
 		h)
 			usage
@@ -705,12 +705,151 @@ select_mount_point
 		fi	
 	fi
 			
+	;;	
+		z)
+			echo "Enabling Zsh auto suggestions" 
+			echo "Must enable zsh-auto-suggestions plugin!"
+			scripath=$(readlink -f ${BASH_SOURCE[@]})
+			echo $scripath
+			user=$(whoami)
+			grps+=($(groups $(whoami) | tr ':' ' ' | tr ' ' '\n'  | sed -r '/^$/d' | sort --uniq | tr '\n' ' '))
+			paths+=($(echo $PATH | tr ':' ' '))
+			filename=lvmlooper_options.zsh
+			shell=$SHELL
 
+			if [[ $shell =~ zsh ]]; then
+				if [[ ! -n $(locate $filename) ]]; then
+				       echo "hello"	
+					read -p "File not found retry using updatedb?: " retry
+					case $retry in
+						y)
+							until [[ $(updatedb) -eq 0 ]]; do
+								echo "Wait for updatedb.."
+							done
+						
+							foundFilePath=$(locate $filename | tail -n 1) 
+							file=$( echo $foundFilePath | basename )
+							cust_path="/usr/bin"
+								if [[ -n $foundFilePath ]]; then
+									path=$(echo $foundFilePath | sed 's:/[^/]*$::')
+									for pathX in ${paths[@]}; do
+										if [[ $pathX =~ $path ]]; then
+											echo "File exists in Path"
+											echo "Checking if sourced in .zshrc"
+											
+											if [[ -n $( grep -Ei "source.*$foundFilePath" /$HOME/.zshrc ) ]]; then
+												echo "path found in ${HOME}/.zshrc"
+												echo "Sourcing ${HOME}/.zshrc"
+												source ${HOME}/.zshrc
+												if [[ $? -eq 0 ]]; then 
+													echo "Sourced successfully"
+													echo "Options Enabled"
+												else
+													echo "Problems Sourcing"
+													exit 1
+												fi
+												exit 0
+											else
+											  	echo "source $cust_path/$filename"
+												source $HOME/.zshrc
+												
+											fi	
+											
+										else
+											
+											echo "Not in Path"
+											echo "Adding zsh script to path"
+											mv $foundFilePath $cust_path/
+											
+											if [[ -n $( grep -Ei "source.*$filename" $HOME/.zshrc) ]]; then 
+												echo "In zshrc line exists"
+												echo "Sourcing"
+												source $HOME/.zshrc
+											fi
+												
+										fi
+									done		
+								else
+									echo "File not found"
+									read -p "Create new file $filename in $cust_path?: " task
+									case $task in 
+										y)
+											echo "Creating file $filename in $cust_path"
+											touch $cust_path/$filename
+											echo "#compdef options.sh
+
+
+_myscript_completions() {
+  local -a opts
+  opts=(
+    '--line-regexp: Force pattern to match only whole lines'
+    '--max-count:Stop after specified number of matches in each file'
+    '%F{red}--no-filename%f:Suppress printing of filenames'
+    '--no-group-separator:Dont separate context blocks'
+    '--no-messages:Suppress messages about unreadable or non-existent files'
+    '--null:Print 0 byte after each filename'
+    '--null-data:Input data separated by 0 byte, not newline'
+    '--only-matching:Show only matching part of line'
+    '-x:Force pattern to match only whole lines'
+    '-m:Stop after specified number of matches in each file'
+    '-h:Suppress printing of filenames'
+    '-s:Suppress messages about unreadable or non-existent files'
+    '-Z:Print 0 byte after each filename'
+    '-z:Input data separated by 0 byte, not newline'
+    '-o:Show only matching part of line'
+  )
+  _describe 'option' opts
+}
+
+compdef _myscript_completions $foundFilePath
+
+zstyle ':completion:*' list-colors '=(#b) *==31=39' \
+                                 '=(#b) *--=34=39' \
+                                 '=(#b) *:*=33=39'
+" > $cust_path/$filename
+;;
+											
+								
+							n)
+								echo "Not creating File. Exiting!" 
+								exit 1
+								;;
+						
+							*)
+								echo "Invalid Command"
+								exit 1
+								;;
+							esac
+						fi
+							;;
+						n)
+							echo "Not retrying. Exiting.."
+							exit 1
+							;;
+						*)
+					
+							echo "Invalid Command"
+							exit 1 
+							;;
+					esac
+			
+				fi
+			       	
+			fi
+		
 			;;
+
+						
+
+		
+		*)
+								echo "Invalid Command"
+								;;
+							
+	
 		\?)
 			echo "${r}Invalid option${reset}"
 			usage
-			exit 1
 			;;
 		:)
 			echo "${r}Requires argument${reset}"
