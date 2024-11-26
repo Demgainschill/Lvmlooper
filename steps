@@ -1,4 +1,8 @@
 Where is the script
+IS source line in .zshrc 
+	Where is zsh file 
+		add contents again to that file
+			source .zshrc 
 
 Create a zsh file in path 
 Add line to source zsh file 
