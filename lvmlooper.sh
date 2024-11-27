@@ -704,7 +704,7 @@ select_mount_point
 			done
 		fi	
 	fi
-			
+		
 	;;	
 		z)
 			current=$(readlink -f ${BASH_SOURCE[0]})
@@ -732,6 +732,7 @@ select_mount_point
 					if [[ -n "$sourceFilePath" ]] || [[ ! -n "$sourceFilePath" ]]; then
 
 
+					echo "${o}Modifying ${reset}${b}$sourceFilePath${reset}"	
 					cat <<EOF | tee $sourceFilePath 
 #compdef your_script_name
 
@@ -749,7 +750,7 @@ compdef _your_script_name $scripath/${scriptname}
 EOF
 					source /root/.zshrc 2>/dev/null
 					echo "${g}Custom options zsh auto-tab completion enabled!${reset}"
-					echo "${y}Try [ Tab ] while completing on lvmlooper options${reset}" 
+					echo "${y}Now try [ Tab ] while completing on lvmlooper options!${reset}" 
 					exit 0
 					else
 						echo "Only sourcing of existing zsh script.."
@@ -768,7 +769,7 @@ EOF
 				sourcer
 				source /root/.zshrc 2>/dev/null				
 				exit 0	
-			
+				
 			;;
 
 			
