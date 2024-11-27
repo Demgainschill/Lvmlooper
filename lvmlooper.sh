@@ -739,9 +739,15 @@ select_mount_point
 _your_script_name() {
     local -a commands
     commands=(
-        'startwdwdwdwwww:Start the script'
-        'sto----p:Stop the script'
-        'status:Show the status'
+        		'-i : Create LVM & loop devices based mounted filesystems/Loopdrives (/mnt/lvmloopfs/tmp*loopdrive) ' 
+		'-d : Delete existing lvms created through lvmlooper'
+		'-l : List existing files created through lvmlooper'
+		'-c : Connect to existing containers deployed through podman'
+		'-e : Extend existing mounted loopdrives On-line				       '
+		'-n : Create NFS shares from exising loopdrives'
+		'-h : Help section'
+		'-z : Enable Zsh Auto-tab Completion on options for lvmlooper (zsh users only!)'
+	
 )
     _describe 'command' commands
 }
