@@ -31,7 +31,7 @@ usage(){
 		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted loopdrives On-line${reset}				       
 		${y}-n${reset} : ${g}Create${reset}${c} NFS shares from exising loopdrives${reset}
 		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
-		${y}-z${reset} : ${r}Enable${reset}${c} Zsh Auto-tab Completion on options for lvmlooper${reset} (zsh users only!)
+		${y}-z${reset} : ${o}Enable${reset}${c} Zsh Auto-tab Completion on options for lvmlooper${reset} (zsh users only!)
 	${o}(${y}-s${reset}${o} Snapshot Coming soon!) ${reset}
 EOF
 
@@ -707,46 +707,78 @@ select_mount_point
 			
 	;;	
 		z)
-			scripath=$(readlink -f ${BASH_SOURCE[@]})
-			echo $scripath
+			current=$(readlink -f ${BASH_SOURCE[0]})
+			scripname=$(basename $current)
+			scriptname=$(echo ${scripname/\.sh/})
+			
+			scripath="/usr/bin"
 			user=$(whoami)
-			grps+=($(groups $(whoami) | tr ':' ' ' | tr ' ' '\n'  | sed -r '/^$/d' | sort --uniq | tr '\n' ' '))
-			paths+=($(echo $PATH | tr ':' ' '))
 			filename=lvmlooper_options.zsh
 			shell=$SHELL
+
+			if [[ ! $shell =~ zsh ]] && [[ ! -f /root/.zshrc ]]; then
+				exit 1
+			fi 
+
+			if [[ ! -n $(find ${scripath} -type f -iname "${scriptname}") ]]; then
+					ln -s $current ${scripath}/${scriptname} 2>/dev/null
+						
+
+		       	fi
+	sourcer(){	
 			
-			if [[ $shell =~ zsh ]] && [[ -f /root/.zshrc ]]; then
-				if [[ -n $( grep -Ei "source.*options.zsh$" /root/.zshrc ) ]]; then
-					echo "source file exists in zsh"
-					wheresrc=$(cat /root/.zshrc | grep -Ei 'source' | grep -Ei 'options' |  cut -d ' ' -f 2)
-				       	echo "#compdef your_script_name
+		if [[ -n $( grep -Ei "source.*options.zsh$" /root/.zshrc ) ]]; then
+			sourceFilePath=$(cat /root/.zshrc | grep -Ei 'source' | grep -Ei 'options' |  cut -d ' ' -f 2)
+					if [[ -n "$sourceFilePath" ]] || [[ ! -n "$sourceFilePath" ]]; then
+
+
+					cat <<EOF | tee $sourceFilePath 
+#compdef your_script_name
 
 _your_script_name() {
     local -a commands
     commands=(
-        'start:Start the script'
-        'stop:Stop the script'
+        'startwdwdwdwwww:Start the script'
+        'sto----p:Stop the script'
         'status:Show the status'
-    )
-
+)
     _describe 'command' commands
 }
 
-compdef _your_script_name ${scripath}
-" > $wheresrc
+compdef _your_script_name $scripath/${scriptname}
+EOF
 					source /root/.zshrc 2>/dev/null
-					echo "Custom options zsh auto tab completion enabled"					
+					echo "${g}Custom options zsh auto-tab completion enabled!${reset}"
+					echo "${y}Try [ Tab ] while completing on lvmlooper options${reset}" 
 					exit 0
+					else
+						echo "Only sourcing of existing zsh script.."
+						source /root/.zshrc 2>/dev/null
+						echo "Custom options zsh auto-tab completion enabled!"
+						exit 0
+					fi
 				fi
-			fi
+	
+}	
+					
+			sourcer
+			source /root/.zshrc 2>/dev/null
+
+			echo "source /root/${filename}" >> /root/.zshrc
+				sourcer
+				source /root/.zshrc 2>/dev/null				
+				exit 0	
 			
-			;;	
+			;;
+
+			
 		
 	
 		\?)
 			echo "${r}Invalid option${reset}"
 			usage
 			;;
+		
 		:)
 			echo "${r}Requires argument${reset}"
 			;;

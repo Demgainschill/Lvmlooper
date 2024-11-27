@@ -7,3 +7,23 @@ IS source line in .zshrc
 Create a zsh file in path 
 Add line to source zsh file 
 
+
+Check if not  zsh and .zshrc not present 
+	exit
+	
+if source line present in .zshrc 
+		take path of source file
+			if contents not present
+				put into source file
+				source zshrc
+			else 
+				source zshrc
+else
+	add source lvmlooper_options.zsh line  		
+		
+else
+exit
+	else
+		
+		 	
+			
