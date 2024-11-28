@@ -127,7 +127,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		for loopfile in $(seq 1 $noofloop); do
 			arrloopfiles+=$(mktemp --suffix=_loopdev ; echo " ")	
 		done
-		for loopfile in "${arrloopfiles[@]}"; do 
+		for loopfile in ${arrloopfiles[@]}; do 
 			fallocate -l $sizeofloop"M" $loopfile
 			if [[ $? -eq 1 ]]; then
 				echo "${r}No space on /tmp${reset}"
@@ -136,7 +136,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			fi
 				
 		done
-		for loopfile in "${arrloopfiles[@]}"; do
+		for loopfile in ${arrloopfiles[@]}; do
 			losetup -f $loopfile
 		done
 		
@@ -145,7 +145,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		vg=$(mktemp --dry-run --suffix=_vg | sed -r 's/\./-/' | sed -r 's/\/tmp\///')
 			
 		
-		for loopdev in "${loopdevicearr[@]}"; do
+		for loopdev in ${loopdevicearr[@]}; do
 			vgcreate $vg $loopdev  2>/dev/null
 			vgextend $vg $loopdev  2>/dev/null 
 		done | while read line ; do
@@ -261,7 +261,7 @@ deleteloop(){
 			umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
 			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
 			deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
-			for pv in "${deletepvs[@]}" ; do
+			for pv in ${deletepvs[@]} ; do
 				echo 'y' | pvremove --force --force $pv
 				if [[ $? -eq 1 ]]; then
 					echo "error occured while removing pv"
@@ -281,7 +281,7 @@ deleteloop(){
 					fi
 				fi
 				deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
-			for pv in "${deletepvs[@]}" ; do
+			for pv in ${deletepvs[@]} ; do
 				echo 'y' | pvremove --force --force $pv
 				if [[ $? -eq 1 ]]; then
 					echo "error occured while removing pv"
@@ -343,7 +343,7 @@ while getopts ':hdilecsnz' opts; do
 			if [[ -d "/mnt/lvmloopfs" ]]; then
 				arr=($(df -h | grep -Eie'/mnt/lvmloopfs/tmp\..*drive' | gawk '{ print $2,$6 }' | sed -r 's/ //' | tr '\n' ' ' ))
 				echo "${o}Total Size${reset}      ${o}LoopDrives${reset}"
-				for mountDirWithSize in "${arr[@]}"; do
+				for mountDirWithSize in ${arr[@]}; do
 					echo $mountDirWithSize | sed -r 's/([0-9]{1,3}(M|K|G))(.*)/\1 &/g' | sed -r 's/[0-9]{1,3}M|K|G//2' | xargs -n 1 -I {} echo "{}" 2>/dev/null | sed -re "s/[0-9]{1,4}(M|K|G)/${g}&${reset}/" | sed -r "s/\/mnt\/.*drive/${b}&${reset}/" 
 				
 
