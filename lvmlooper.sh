@@ -733,6 +733,7 @@ select_mount_point
 
 
 					echo "${o}Modifying ${reset}${b}$sourceFilePath${reset}"	
+					echo "${o}Listing${reset}${b} Contents of Source file $sourceFilePath${reset}" 
 					cat <<EOF | tee $sourceFilePath 
 #compdef your_script_name
 
@@ -756,7 +757,7 @@ compdef _your_script_name $scripath/${scriptname}
 EOF
 					source /root/.zshrc 2>/dev/null
 					echo "${g}Custom options zsh auto-tab completion enabled!${reset}"
-					echo "${y}Now try [ Tab ] while completing on lvmlooper options!${reset}" 
+					echo "${y}Now try [ Tab ] while completing lvmlooper options!${reset}" 
 					exit 0
 					else
 						echo "Only sourcing of existing zsh script.."
