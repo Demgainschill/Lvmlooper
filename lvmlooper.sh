@@ -19,7 +19,6 @@ y=$(tput setaf 3)
 reset=$(tput sgr0)
 c=$(tput setaf 14)
 o=$(tput setaf 208) 
-greensoo=$(tput setaf 48)
 
 usage(){
 	cat <<EOF
@@ -28,7 +27,7 @@ usage(){
 		${y}-d${reset} : ${r}Delete${reset}${c} existing lvms created through lvmlooper${reset}
 		${y}-l${reset} : ${b}List${reset}${c} existing files created through lvmlooper${reset}
 		${y}-c${reset} : ${o}Connect${reset}${c} to existing containers deployed through podman${reset}
-		${y}-e${reset} : ${e}Extend${reset}${c} existing mounted loopdrives On-line${reset}				       
+		${y}-e${reset} : Extend${c} existing mounted loopdrives On-line${reset}				       
 		${y}-n${reset} : ${g}Create${reset}${c} NFS shares from exising loopdrives${reset}
 		${y}-h${reset} : ${y}Help${reset}${c} section${reset}
 		${y}-z${reset} : ${o}Enable${reset}${c} Zsh Auto-tab Completion on options for lvmlooper${reset} (zsh users only!)
@@ -128,7 +127,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		for loopfile in $(seq 1 $noofloop); do
 			arrloopfiles+=$(mktemp --suffix=_loopdev ; echo " ")	
 		done
-		for loopfile in ${arrloopfiles[@]}; do 
+		for loopfile in "${arrloopfiles[@]}"; do 
 			fallocate -l $sizeofloop"M" $loopfile
 			if [[ $? -eq 1 ]]; then
 				echo "${r}No space on /tmp${reset}"
@@ -137,7 +136,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			fi
 				
 		done
-		for loopfile in ${arrloopfiles[@]}; do
+		for loopfile in "${arrloopfiles[@]}"; do
 			losetup -f $loopfile
 		done
 		
@@ -146,7 +145,7 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 		vg=$(mktemp --dry-run --suffix=_vg | sed -r 's/\./-/' | sed -r 's/\/tmp\///')
 			
 		
-		for loopdev in ${loopdevicearr[@]}; do
+		for loopdev in "${loopdevicearr[@]}"; do
 			vgcreate $vg $loopdev  2>/dev/null
 			vgextend $vg $loopdev  2>/dev/null 
 		done | while read line ; do
@@ -158,7 +157,6 @@ if [[ -n $noofloop ]] && [[ $noofloop -gt 0 ]]; then
 			echo "${r}Not a valid lvm type${reset}"
 			exit 1 
 		fi 		
-		freespaceinvg=$(vgs | grep -Ei "$vg" | tr ' ' '\n' | sed -r '/^$/d' | tail -n 1)
 		case $lvmtype in
 			l)
 				lvcreate --type linear -l 100%FREE -n $(mktemp --dry-run --suffix=_linear_lv | sed -r 's/\/tmp\///') $vg | while read line; do
@@ -263,7 +261,7 @@ deleteloop(){
 			umount -f /dev/mapper/tmp\-\-*lv 2>/dev/null
 			umount -f /mnt/lvmloopfs/tmp\.*loopdrive 2>/dev/null
 			deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
-			for pv in ${deletepvs[@]} ; do
+			for pv in "${deletepvs[@]}" ; do
 				echo 'y' | pvremove --force --force $pv
 				if [[ $? -eq 1 ]]; then
 					echo "error occured while removing pv"
@@ -283,7 +281,7 @@ deleteloop(){
 					fi
 				fi
 				deletepvs=($(losetup -l  | grep -Ei 'deleted' | cut -d ' ' -f 1 | tr '\n' ' ' ))
-			for pv in ${deletepvs[@]} ; do
+			for pv in "${deletepvs[@]}" ; do
 				echo 'y' | pvremove --force --force $pv
 				if [[ $? -eq 1 ]]; then
 					echo "error occured while removing pv"
@@ -345,7 +343,7 @@ while getopts ':hdilecsnz' opts; do
 			if [[ -d "/mnt/lvmloopfs" ]]; then
 				arr=($(df -h | grep -Eie'/mnt/lvmloopfs/tmp\..*drive' | gawk '{ print $2,$6 }' | sed -r 's/ //' | tr '\n' ' ' ))
 				echo "${o}Total Size${reset}      ${o}LoopDrives${reset}"
-				for mountDirWithSize in ${arr[@]}; do
+				for mountDirWithSize in "${arr[@]}"; do
 					echo $mountDirWithSize | sed -r 's/([0-9]{1,3}(M|K|G))(.*)/\1 &/g' | sed -r 's/[0-9]{1,3}M|K|G//2' | xargs -n 1 -I {} echo "{}" 2>/dev/null | sed -re "s/[0-9]{1,4}(M|K|G)/${g}&${reset}/" | sed -r "s/\/mnt\/.*drive/${b}&${reset}/" 
 				
 
@@ -441,7 +439,6 @@ while getopts ':hdilecsnz' opts; do
 			fi
 			vg=$(echo "$selected_device" | grep -Eio 'tmp.*vg-tmp' | sed -r 's/--/-/' | sed -r 's/-tmp//')
 			vfree=$(vgs | grep -Ei "$vg" | tr " " "\n" | sed -r '/^$/d' | tail -n 1 | sed -r 's/m//'| sed -r 's/\.00//')
-			lv=$(echo "$selected_device" | grep -Eio "tmp\..*lv") 
 	
 			echo "${b}Vfree in Volume group${reset} ${o}$vg${reset} : $vfree Mb"
 		if [[ $extend -le $vfree ]]; then
@@ -712,7 +709,6 @@ select_mount_point
 			scriptname=$(echo ${scripname/\.sh/})
 			
 			scripath="/usr/bin"
-			user=$(whoami)
 			filename=lvmlooper_options.zsh
 			shell=$SHELL
 
