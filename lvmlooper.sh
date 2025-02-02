@@ -104,9 +104,22 @@ fscreator(){
 					mount /dev/mapper/$(ls -tr /dev/mapper | tail -n 1 ) /mnt/lvmloopfs/$fsdir
 					echo "${g}Find mounted filesystem on /mnt/lvmloopfs/$fsdir ${reset}${b}!!${reset}"
 }
+ascii(){
 
+cat <<EOF
+${g}██╗    ██╗   ██╗███╗   ███╗██╗      ██████╗  ██████╗ ██████╗ ███████╗██████╗ ${reset}
+${g}██║    ██║   ██║████╗ ████║██║     ██╔═══██╗██╔═══██╗██╔══██╗██╔════╝██╔══██╗${reset}
+${g}██║    ██║   ██║██╔████╔██║██║     ██║   ██║██║   ██║██████╔╝█████╗  ██████╔╝${reset}
+${g}██║    ╚██╗ ██╔╝██║╚██╔╝██║██║     ██║   ██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗${reset}
+${g}███████╗╚████╔╝ ██║ ╚═╝ ██║███████╗╚██████╔╝╚██████╔╝██║     ███████╗██║  ██║${reset}
+${g}╚══════╝ ╚═══╝  ╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝${reset}
+                                                                             
+
+EOF
+
+}
 interactive_mode(){
-
+ascii
 
 echo "${y}Interactive mode${reset}"
 
